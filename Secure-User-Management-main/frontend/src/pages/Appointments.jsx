@@ -15,10 +15,6 @@ const Appointments = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   
-  useEffect(() => {
-    fetchAppointments();
-  }, [user]);
-
   const fetchAppointments = async () => {
     setLoading(true);
     try {
@@ -31,6 +27,10 @@ const Appointments = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [user]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

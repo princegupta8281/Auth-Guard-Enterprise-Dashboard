@@ -8,7 +8,7 @@ export default defineConfig(({ mode, command }) => {
   const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:8081'
 
   return {
-    base: command === 'build' ? '/frontend/' : '/',
+    base: command === 'build' ? '/Auth-Guard-Enterprise-Dashboard/' : '/',
     plugins: [
       react(),
       tailwindcss(),

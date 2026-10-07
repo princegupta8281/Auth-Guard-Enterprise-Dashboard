@@ -18,8 +18,8 @@ public class TicketController {
     @Autowired private UserRepository userRepository;
 
     @GetMapping
-    public ResponseEntity<?> getUserTickets(@AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+    public ResponseEntity<?> getUserTickets(@AuthenticationPrincipal String email) {
+        User user = userRepository.findByEmail(email).orElseThrow();
         if (user.getRole() == Role.ADMIN) {
             return ResponseEntity.ok(ticketRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDTO).collect(Collectors.toList()));
         }
@@ -27,8 +27,8 @@ public class TicketController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createTicket(@AuthenticationPrincipal UserDetails userDetails, @RequestBody Map<String, String> payload) {
-        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+    public ResponseEntity<?> createTicket(@AuthenticationPrincipal String email, @RequestBody Map<String, String> payload) {
+        User user = userRepository.findByEmail(email).orElseThrow();
         Ticket t = new Ticket();
         t.setUser(user);
         t.setTitle(payload.get("title"));
@@ -39,9 +39,9 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getTicket(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+    public ResponseEntity<?> getTicket(@AuthenticationPrincipal String email, @PathVariable Long id) {
         Ticket t = ticketRepository.findById(id).orElseThrow();
-        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+        User user = userRepository.findByEmail(email).orElseThrow();
         
         if (user.getRole() != Role.ADMIN && !t.getUser().getId().equals(user.getId())) {
             return ResponseEntity.status(403).build();
@@ -63,8 +63,8 @@ public class TicketController {
     }
 
     @PostMapping("/{id}/messages")
-    public ResponseEntity<?> addMessage(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @RequestBody Map<String, String> payload) {
-        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+    public ResponseEntity<?> addMessage(@AuthenticationPrincipal String email, @PathVariable Long id, @RequestBody Map<String, String> payload) {
+        User user = userRepository.findByEmail(email).orElseThrow();
         Ticket t = ticketRepository.findById(id).orElseThrow();
         
         if (user.getRole() != Role.ADMIN && !t.getUser().getId().equals(user.getId())) {
@@ -80,8 +80,8 @@ public class TicketController {
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateStatus(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @RequestBody Map<String, String> payload) {
-        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+    public ResponseEntity<?> updateStatus(@AuthenticationPrincipal String email, @PathVariable Long id, @RequestBody Map<String, String> payload) {
+        User user = userRepository.findByEmail(email).orElseThrow();
         if (user.getRole() != Role.ADMIN) return ResponseEntity.status(403).build();
 
         Ticket t = ticketRepository.findById(id).orElseThrow();

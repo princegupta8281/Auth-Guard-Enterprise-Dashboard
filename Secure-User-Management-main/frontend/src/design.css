@@ -23,6 +23,23 @@
   --display: "Outfit", "Avenir Next", Avenir, sans-serif;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #e2e8f0;
+    background: #0f172a;
+    --paper: #0f172a;
+    --paper-strong: #1e293b;
+    --ink: #f8fafc;
+    --ink-soft: #cbd5e1;
+    --ink-muted: #94a3b8;
+    --line: #334155;
+    --line-strong: #475569;
+    --rail: #020617;
+    --rail-muted: #64748b;
+  }
+}
+
+
 html,
 body,
 #root {
@@ -1034,3 +1051,18 @@ html.dark .app-footer { color: #a0a998; border-color: #343e34; }
   *::before,
   *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+html.dark .auth-input-wrap,
+html.dark .remember-check,
+html.dark .recovery-card input,
+html.dark .topbar-menu,
+html.dark .topbar-search.is-focused,
+html.dark .topbar-icon-button:hover { background: #182018; border-color: #414c40; }
+
+html.dark .capability-card { background: rgba(0, 0, 0, .2); border-color: #364035; }
+html.dark .capability-card > a { background: rgba(255,255,255,.1); border-color: #364035; color: #a4ad9a; }
+
+html.dark .dash-metric-card,
+html.dark .dash-list-card,
+html.dark .floating-note,
+html.dark .workspace-card,
+html.dark .story-preview { background: #222b22; border-color: #364035; color: #e9ede2; box-shadow: none; }

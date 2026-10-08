@@ -9,13 +9,25 @@ const Projects = () => {
     { id: 'done', title: 'Completed', color: 'bg-emerald-50 dark:bg-emerald-500/10' },
   ]);
 
-  const [tasks] = useState([
+  const [tasks, setTasks] = useState([
     { id: 1, title: 'Implement biometric auth', column: 'todo', priority: 'High', date: 'Oct 12' },
     { id: 2, title: 'Design system overhaul', column: 'in_progress', priority: 'Medium', date: 'Oct 15' },
     { id: 3, title: 'Security audit preparation', column: 'in_progress', priority: 'High', date: 'Oct 10' },
     { id: 4, title: 'Update privacy policy', column: 'review', priority: 'Low', date: 'Oct 05' },
     { id: 5, title: 'Onboarding flows', column: 'done', priority: 'Medium', date: 'Oct 01' },
   ]);
+  
+  const handleAddTask = () => {
+    const newTask = {
+      id: Date.now(),
+      title: 'New mock task added via API',
+      column: 'todo',
+      priority: 'Medium',
+      date: 'Today'
+    };
+    setTasks(prev => [newTask, ...prev]);
+    alert('API Call Mocked: Task created successfully!');
+  };
 
   const getPriorityColor = (p) => {
     switch (p) {
@@ -36,7 +48,7 @@ const Projects = () => {
           </h1>
           <p className="mt-2 text-slate-800 dark:text-slate-100 font-medium">Manage your tasks and workflows visually.</p>
         </div>
-        <button className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2 hover:-translate-y-1">
+        <button onClick={handleAddTask} className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2 hover:-translate-y-1">
           <Plus className="h-5 w-5" /> New Task
         </button>
       </div>
@@ -44,7 +56,7 @@ const Projects = () => {
       <div className="flex-1 overflow-x-auto custom-scrollbar pb-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
         <div className="flex gap-6 min-w-max h-full">
           {columns.map(col => (
-            <div key={col.id} className={`w-80 flex flex-col rounded-3xl p-4 border border-slate-200/60 dark:border-white/5 ${col.color} transition-colors`}>
+            <div key={col.id} className={\w-80 flex flex-col rounded-3xl p-4 border border-slate-200/60 dark:border-white/5 \ transition-colors\}>
               <div className="flex justify-between items-center mb-6 px-2">
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">{col.title}</h3>
                 <span className="h-6 w-6 rounded-full bg-white dark:bg-base-900 flex items-center justify-center text-xs font-bold shadow-sm">
@@ -56,7 +68,7 @@ const Projects = () => {
                 {tasks.filter(t => t.column === col.id).map(task => (
                   <div key={task.id} className="bg-white dark:bg-base-900 p-5 rounded-2xl shadow-sm border border-slate-200/60 dark:border-white/5 group hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
                     <div className="flex justify-between items-start mb-3">
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
+                      <span className={\px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider \\}>
                         {task.priority}
                       </span>
                       <button className="text-slate-400 hover:text-slate-800 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
@@ -80,7 +92,7 @@ const Projects = () => {
                 ))}
               </div>
               
-              <button className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-100 font-bold hover:bg-white dark:hover:bg-base-800 hover:border-slate-400 dark:hover:border-white/20 transition-all flex items-center justify-center gap-2">
+              <button onClick={handleAddTask} className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-100 font-bold hover:bg-white dark:hover:bg-base-800 hover:border-slate-400 dark:hover:border-white/20 transition-all flex items-center justify-center gap-2">
                 <Plus className="h-4 w-4" /> Add Task
               </button>
             </div>
@@ -92,4 +104,3 @@ const Projects = () => {
 };
 
 export default Projects;
-

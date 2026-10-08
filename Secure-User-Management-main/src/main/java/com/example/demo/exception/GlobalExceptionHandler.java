@@ -68,9 +68,9 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request);
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
+    @ExceptionHandler({ResourceNotFoundException.class, java.util.NoSuchElementException.class})
     public ResponseEntity<ErrorResponse> handleResourceNotFound(
-            ResourceNotFoundException ex,
+            Exception ex,
             HttpServletRequest request) {
 
         return errorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage(), request);

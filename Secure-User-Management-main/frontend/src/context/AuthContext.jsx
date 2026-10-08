@@ -79,8 +79,11 @@ export const AuthProvider = ({ children }) => {
         storeUser(refreshedUser, Boolean(localStorage.getItem('user')));
         setUser(refreshedUser);
       } catch (error) {
-        if (error.response?.status !== 401) {
+        if (error.response?.status !== 401 && error.response?.status !== 404) {
           setUser(storedUser);
+        } else {
+          clearStoredUser();
+          setUser(null);
         }
       } finally {
         setLoading(false);

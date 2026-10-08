@@ -56,7 +56,7 @@ const Projects = () => {
       <div className="flex-1 overflow-x-auto custom-scrollbar pb-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
         <div className="flex gap-6 min-w-max h-full">
           {columns.map(col => (
-            <div key={col.id} className={\w-80 flex flex-col rounded-3xl p-4 border border-slate-200/60 dark:border-white/5 \ transition-colors\}>
+            <div key={col.id} className={`w-80 flex flex-col rounded-3xl p-4 border border-slate-200/60 dark:border-white/5 ${col.color} transition-colors`}>
               <div className="flex justify-between items-center mb-6 px-2">
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">{col.title}</h3>
                 <span className="h-6 w-6 rounded-full bg-white dark:bg-base-900 flex items-center justify-center text-xs font-bold shadow-sm">
@@ -68,7 +68,7 @@ const Projects = () => {
                 {tasks.filter(t => t.column === col.id).map(task => (
                   <div key={task.id} className="bg-white dark:bg-base-900 p-5 rounded-2xl shadow-sm border border-slate-200/60 dark:border-white/5 group hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
                     <div className="flex justify-between items-start mb-3">
-                      <span className={\px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider \\}>
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
                         {task.priority}
                       </span>
                       <button className="text-slate-400 hover:text-slate-800 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">

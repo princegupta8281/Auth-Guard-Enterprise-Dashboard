@@ -85,7 +85,7 @@ public class TicketController {
         if (user.getRole() != Role.ADMIN) return ResponseEntity.status(403).build();
 
         Ticket t = ticketRepository.findById(id).orElseThrow();
-        t.setStatus(TicketStatus.valueOf(payload.get("status")));
+        t.setStatus(TicketStatus.valueOf(payload.getOrDefault("status", "OPEN")));
         ticketRepository.save(t);
         return ResponseEntity.ok(Map.of("success", true));
     }

@@ -4,7 +4,6 @@ import com.example.demo.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +32,9 @@ public class TicketController {
         t.setUser(user);
         t.setTitle(payload.get("title"));
         t.setDescription(payload.get("description"));
-        t.setPriority(TicketPriority.valueOf(payload.getOrDefault("priority", "LOW")));
+        
+        String priorityStr = payload.get("priority");
+        t.setPriority(TicketPriority.valueOf(priorityStr != null ? priorityStr : "LOW"));
         ticketRepository.save(t);
         return ResponseEntity.ok(toDTO(t));
     }
@@ -85,7 +86,8 @@ public class TicketController {
         if (user.getRole() != Role.ADMIN) return ResponseEntity.status(403).build();
 
         Ticket t = ticketRepository.findById(id).orElseThrow();
-        t.setStatus(TicketStatus.valueOf(payload.getOrDefault("status", "OPEN")));
+        String statusStr = payload.get("status");
+        t.setStatus(TicketStatus.valueOf(statusStr != null ? statusStr : "OPEN"));
         ticketRepository.save(t);
         return ResponseEntity.ok(Map.of("success", true));
     }

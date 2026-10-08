@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { FolderKanban, Plus, MoreHorizontal, Clock, CheckCircle2, Circle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FolderKanban, Plus, MoreHorizontal, Clock, CheckCircle2, Circle, X, Trash2 } from 'lucide-react';
+import { tasksApi, getApiErrorMessage } from '../services/api';
 
 const Projects = () => {
   const [columns] = useState([
@@ -9,24 +10,84 @@ const Projects = () => {
     { id: 'done', title: 'Completed', color: 'bg-emerald-50 dark:bg-emerald-500/10' },
   ]);
 
-  const [tasks, setTasks] = useState([
-    { id: 1, title: 'Implement biometric auth', column: 'todo', priority: 'High', date: 'Oct 12' },
-    { id: 2, title: 'Design system overhaul', column: 'in_progress', priority: 'Medium', date: 'Oct 15' },
-    { id: 3, title: 'Security audit preparation', column: 'in_progress', priority: 'High', date: 'Oct 10' },
-    { id: 4, title: 'Update privacy policy', column: 'review', priority: 'Low', date: 'Oct 05' },
-    { id: 5, title: 'Onboarding flows', column: 'done', priority: 'Medium', date: 'Oct 01' },
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   
-  const handleAddTask = () => {
-    const newTask = {
-      id: Date.now(),
-      title: 'New mock task added via API',
-      column: 'todo',
-      priority: 'Medium',
-      date: 'Today'
-    };
-    setTasks(prev => [newTask, ...prev]);
-    alert('API Call Mocked: Task created successfully!');
+  const [formData, setFormData] = useState({
+    title: '',
+    columnId: 'todo',
+    priority: 'Medium',
+    dateStr: 'Today'
+  });
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const { data } = await tasksApi.list();
+      setTasks(data);
+    } catch (err) {
+      console.error(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const openModal = (task = null, columnId = 'todo') => {
+    if (task) {
+      setEditingTask(task);
+      setFormData({
+        title: task.title,
+        columnId: task.column,
+        priority: task.priority,
+        dateStr: task.date
+      });
+    } else {
+      setEditingTask(null);
+      setFormData({
+        title: '',
+        columnId,
+        priority: 'Medium',
+        dateStr: 'Today'
+      });
+    }
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingTask(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingTask) {
+        await tasksApi.update(editingTask.id, formData);
+      } else {
+        await tasksApi.create(formData);
+      }
+      await fetchTasks();
+      closeModal();
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Failed to save task'));
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await tasksApi.delete(id);
+      await fetchTasks();
+      if (editingTask?.id === id) closeModal();
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Failed to delete task'));
+    }
   };
 
   const getPriorityColor = (p) => {
@@ -48,7 +109,7 @@ const Projects = () => {
           </h1>
           <p className="mt-2 text-slate-800 dark:text-slate-100 font-medium">Manage your tasks and workflows visually.</p>
         </div>
-        <button onClick={handleAddTask} className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2 hover:-translate-y-1">
+        <button onClick={() => openModal()} className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2 hover:-translate-y-1">
           <Plus className="h-5 w-5" /> New Task
         </button>
       </div>
@@ -65,40 +126,118 @@ const Projects = () => {
               </div>
               
               <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-1">
-                {tasks.filter(t => t.column === col.id).map(task => (
-                  <div key={task.id} className="bg-white dark:bg-base-900 p-5 rounded-2xl shadow-sm border border-slate-200/60 dark:border-white/5 group hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
-                    <div className="flex justify-between items-start mb-3">
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
-                        {task.priority}
-                      </span>
-                      <button className="text-slate-400 hover:text-slate-800 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
-                    </div>
-                    <h4 className="font-bold text-slate-800 dark:text-white leading-tight mb-4">{task.title}</h4>
-                    
-                    <div className="flex justify-between items-center text-xs font-medium text-slate-800 dark:text-slate-100 pt-3 border-t border-slate-100 dark:border-white/5">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" />
-                        {task.date}
+                {loading ? (
+                  <div className="text-center py-4 text-slate-500">Loading...</div>
+                ) : (
+                  tasks.filter(t => t.column === col.id).map(task => (
+                    <div key={task.id} onClick={() => openModal(task)} className="bg-white dark:bg-base-900 p-5 rounded-2xl shadow-sm border border-slate-200/60 dark:border-white/5 group hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
+                      <div className="flex justify-between items-start mb-3">
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                      {col.id === 'done' ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <Circle className="h-4 w-4 text-slate-300 dark:text-base-600" />
-                      )}
+                      <h4 className="font-bold text-slate-800 dark:text-white leading-tight mb-4">{task.title}</h4>
+                      
+                      <div className="flex justify-between items-center text-xs font-medium text-slate-800 dark:text-slate-100 pt-3 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          {task.date}
+                        </div>
+                        {col.id === 'done' ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-slate-300 dark:text-base-600" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               
-              <button onClick={handleAddTask} className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-100 font-bold hover:bg-white dark:hover:bg-base-800 hover:border-slate-400 dark:hover:border-white/20 transition-all flex items-center justify-center gap-2">
+              <button onClick={() => openModal(null, col.id)} className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-100 font-bold hover:bg-white dark:hover:bg-base-800 hover:border-slate-400 dark:hover:border-white/20 transition-all flex items-center justify-center gap-2">
                 <Plus className="h-4 w-4" /> Add Task
               </button>
             </div>
           ))}
         </div>
       </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-base-900 rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-white/10">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {editingTask ? 'Edit Task' : 'New Task'}
+              </h2>
+              <button onClick={closeModal} className="text-slate-500 hover:bg-slate-100 dark:hover:bg-base-800 p-2 rounded-full transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Task Title</label>
+                <input 
+                  type="text" 
+                  required
+                  value={formData.title}
+                  onChange={e => setFormData({...formData, title: e.target.value})}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
+                  placeholder="Enter task title"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Status Column</label>
+                  <select 
+                    value={formData.columnId}
+                    onChange={e => setFormData({...formData, columnId: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
+                  >
+                    {columns.map(col => <option key={col.id} value={col.id}>{col.title}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Priority</label>
+                  <select 
+                    value={formData.priority}
+                    onChange={e => setFormData({...formData, priority: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Date/Milestone</label>
+                <input 
+                  type="text" 
+                  value={formData.dateStr}
+                  onChange={e => setFormData({...formData, dateStr: e.target.value})}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
+                  placeholder="e.g. Oct 12"
+                />
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={closeModal} className="px-5 py-2.5 font-bold rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-base-800 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" className="px-5 py-2.5 font-bold rounded-xl bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-500/30 transition-colors">
+                  {editingTask ? 'Save Changes' : 'Create Task'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

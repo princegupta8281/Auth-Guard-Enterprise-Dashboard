@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ticketsApi } from '../services/api';
+import { getApiErrorMessage, ticketsApi } from '../services/api';
 import { MessageSquare, Plus, Clock, CheckCircle2, ChevronRight, X, Search, ArrowUpDown, Filter } from 'lucide-react';
 
 const Tickets = () => {
@@ -10,6 +10,7 @@ const Tickets = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketDetails, setTicketDetails] = useState(null);
+  const [error, setError] = useState('');
   
   const [newTicket, setNewTicket] = useState({ title: '', description: '', priority: 'LOW' });
   const [newMessage, setNewMessage] = useState('');
@@ -20,12 +21,12 @@ const Tickets = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
   const fetchTickets = async () => {
-    setLoading(true);
     try {
       const res = await ticketsApi.getUserTickets();
       setTickets(res.data);
-    } catch (e) {
-      console.error(e);
+      setError('');
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'Support requests could not be loaded.'));
     } finally {
       setLoading(false);
     }
@@ -42,18 +43,21 @@ const Tickets = () => {
       setIsCreating(false);
       setNewTicket({ title: '', description: '', priority: 'LOW' });
       fetchTickets();
-    } catch (e) {
-      console.error(e);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'The support request could not be created.'));
     }
   };
 
   const openTicket = async (ticket) => {
     setSelectedTicket(ticket);
+    setTicketDetails(null);
+    setError('');
     try {
       const res = await ticketsApi.getTicket(ticket.id);
       setTicketDetails(res.data);
-    } catch (e) {
-      console.error(e);
+      setError('');
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'The support request could not be opened.'));
     }
   };
 
@@ -64,8 +68,8 @@ const Tickets = () => {
       await ticketsApi.addMessage(selectedTicket.id, { message: newMessage });
       setNewMessage('');
       openTicket(selectedTicket);
-    } catch (e) {
-      console.error(e);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'Your reply could not be sent.'));
     }
   };
 
@@ -74,8 +78,8 @@ const Tickets = () => {
       await ticketsApi.updateStatus(selectedTicket.id, status);
       openTicket(selectedTicket);
       fetchTickets();
-    } catch (e) {
-      console.error(e);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'The support request status could not be updated.'));
     }
   };
 
@@ -144,6 +148,13 @@ const Tickets = () => {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-100" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => { setLoading(true); fetchTickets(); }} className="shrink-0 underline underline-offset-2">Try again</button>
+        </div>
+      )}
+
       {isCreating && (
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-charcoal-900 border border-slate-200 dark:border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
@@ -153,6 +164,7 @@ const Tickets = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
+            {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-900 dark:bg-red-950/50 dark:text-red-100" role="alert">{error}</p>}
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-100 mb-1">Subject</label>

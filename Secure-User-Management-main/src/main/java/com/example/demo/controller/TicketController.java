@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
+import com.example.demo.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -18,7 +20,7 @@ public class TicketController {
 
     @GetMapping
     public ResponseEntity<?> getUserTickets(@AuthenticationPrincipal String email) {
-        User user = userRepository.findByEmail(email).orElseThrow();
+        User user = findUser(email);
         if (user.getRole() == Role.ADMIN) {
             return ResponseEntity.ok(ticketRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDTO).collect(Collectors.toList()));
         }
@@ -27,22 +29,22 @@ public class TicketController {
 
     @PostMapping
     public ResponseEntity<?> createTicket(@AuthenticationPrincipal String email, @RequestBody Map<String, String> payload) {
-        User user = userRepository.findByEmail(email).orElseThrow();
+        User user = findUser(email);
         Ticket t = new Ticket();
         t.setUser(user);
-        t.setTitle(payload.get("title"));
-        t.setDescription(payload.get("description"));
+        t.setTitle(requiredText(payload, "title"));
+        t.setDescription(requiredText(payload, "description"));
         
         String priorityStr = payload.get("priority");
-        t.setPriority(TicketPriority.valueOf(priorityStr != null ? priorityStr : "LOW"));
+        t.setPriority(parsePriority(priorityStr));
         ticketRepository.save(t);
         return ResponseEntity.ok(toDTO(t));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getTicket(@AuthenticationPrincipal String email, @PathVariable Long id) {
-        Ticket t = ticketRepository.findById(id).orElseThrow();
-        User user = userRepository.findByEmail(email).orElseThrow();
+        Ticket t = findTicket(id);
+        User user = findUser(email);
         
         if (user.getRole() != Role.ADMIN && !t.getUser().getId().equals(user.getId())) {
             return ResponseEntity.status(403).build();
@@ -65,8 +67,8 @@ public class TicketController {
 
     @PostMapping("/{id}/messages")
     public ResponseEntity<?> addMessage(@AuthenticationPrincipal String email, @PathVariable Long id, @RequestBody Map<String, String> payload) {
-        User user = userRepository.findByEmail(email).orElseThrow();
-        Ticket t = ticketRepository.findById(id).orElseThrow();
+        User user = findUser(email);
+        Ticket t = findTicket(id);
         
         if (user.getRole() != Role.ADMIN && !t.getUser().getId().equals(user.getId())) {
             return ResponseEntity.status(403).build();
@@ -75,19 +77,23 @@ public class TicketController {
         TicketMessage m = new TicketMessage();
         m.setTicket(t);
         m.setSender(user);
-        m.setMessage(payload.get("message"));
+        m.setMessage(requiredText(payload, "message"));
         messageRepository.save(m);
         return ResponseEntity.ok(Map.of("success", true));
     }
 
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@AuthenticationPrincipal String email, @PathVariable Long id, @RequestBody Map<String, String> payload) {
-        User user = userRepository.findByEmail(email).orElseThrow();
+        User user = findUser(email);
         if (user.getRole() != Role.ADMIN) return ResponseEntity.status(403).build();
 
-        Ticket t = ticketRepository.findById(id).orElseThrow();
-        String statusStr = payload.get("status");
-        t.setStatus(TicketStatus.valueOf(statusStr != null ? statusStr : "OPEN"));
+        Ticket t = findTicket(id);
+        String statusStr = requiredText(payload, "status");
+        try {
+            t.setStatus(TicketStatus.valueOf(statusStr.toUpperCase(Locale.ROOT)));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Invalid ticket status");
+        }
         ticketRepository.save(t);
         return ResponseEntity.ok(Map.of("success", true));
     }
@@ -103,5 +109,33 @@ public class TicketController {
         map.put("userName", t.getUser().getName());
         map.put("userEmail", t.getUser().getEmail());
         return map;
+    }
+
+    private User findUser(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private Ticket findTicket(Long id) {
+        return ticketRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+    }
+
+    private String requiredText(Map<String, String> payload, String key) {
+        String value = payload.get(key);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(key + " is required");
+        }
+        return value.strip();
+    }
+
+    private TicketPriority parsePriority(String value) {
+        try {
+            return TicketPriority.valueOf(value == null || value.isBlank()
+                    ? "LOW"
+                    : value.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Invalid ticket priority");
+        }
     }
 }

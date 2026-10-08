@@ -204,7 +204,7 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 status.value(),
                 error,
-                message,
+                message == null || message.isBlank() ? status.getReasonPhrase() : message,
                 request.getRequestURI()
         );
 

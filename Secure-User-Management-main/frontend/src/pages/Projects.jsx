@@ -1,244 +1,181 @@
-import React, { useState, useEffect } from 'react';
-import { FolderKanban, Plus, MoreHorizontal, Clock, CheckCircle2, Circle, X, Trash2 } from 'lucide-react';
-import { tasksApi, getApiErrorMessage } from '../services/api';
+import React, { useCallback, useEffect, useState } from 'react';
+import { FolderKanban, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { getApiErrorMessage, projectsApi } from '../services/api';
+
+const initialForm = { name: '', description: '', status: 'PLANNING', dueDate: '' };
+const statuses = ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED'];
 
 const Projects = () => {
-  const [columns] = useState([
-    { id: 'todo', title: 'To Do', color: 'bg-slate-100 dark:bg-base-800' },
-    { id: 'in_progress', title: 'In Progress', color: 'bg-primary-50 dark:bg-primary-500/10' },
-    { id: 'review', title: 'In Review', color: 'bg-amber-50 dark:bg-amber-500/10' },
-    { id: 'done', title: 'Completed', color: 'bg-emerald-50 dark:bg-emerald-500/10' },
-  ]);
-
-  const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-  
-  const [formData, setFormData] = useState({
-    title: '',
-    columnId: 'todo',
-    priority: 'Medium',
-    dateStr: 'Today'
-  });
+  const [editingProject, setEditingProject] = useState(null);
+  const [formData, setFormData] = useState(initialForm);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const fetchTasks = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
-      setLoading(true);
-      const { data } = await tasksApi.list();
-      setTasks(data);
-    } catch (err) {
-      console.error(getApiErrorMessage(err));
+      const { data } = await projectsApi.list();
+      setProjects(data);
+      setError('');
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'Projects could not be loaded.'));
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchTasks();
   }, []);
 
-  const openModal = (task = null, columnId = 'todo') => {
-    if (task) {
-      setEditingTask(task);
-      setFormData({
-        title: task.title,
-        columnId: task.column,
-        priority: task.priority,
-        dateStr: task.date
-      });
-    } else {
-      setEditingTask(null);
-      setFormData({
-        title: '',
-        columnId,
-        priority: 'Medium',
-        dateStr: 'Today'
-      });
-    }
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  const openModal = (project = null) => {
+    setEditingProject(project);
+    setFormData(project
+      ? {
+        name: project.name,
+        description: project.description || '',
+        status: project.status || 'PLANNING',
+        dueDate: project.dueDate || '',
+      }
+      : initialForm);
+    setError('');
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
-    setEditingTask(null);
+    setEditingProject(null);
+    setFormData(initialForm);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
     try {
-      if (editingTask) {
-        await tasksApi.update(editingTask.id, formData);
+      if (editingProject) {
+        await projectsApi.update(editingProject.id, formData);
       } else {
-        await tasksApi.create(formData);
+        await projectsApi.create(formData);
       }
-      await fetchTasks();
+      setLoading(true);
+      await fetchProjects();
       closeModal();
-    } catch (err) {
-      alert(getApiErrorMessage(err, 'Failed to save task'));
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'The project could not be saved.'));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+  const handleDelete = async (project) => {
+    if (!window.confirm(`Delete “${project.name}”? This cannot be undone.`)) return;
     try {
-      await tasksApi.delete(id);
-      await fetchTasks();
-      if (editingTask?.id === id) closeModal();
-    } catch (err) {
-      alert(getApiErrorMessage(err, 'Failed to delete task'));
-    }
-  };
-
-  const getPriorityColor = (p) => {
-    switch (p) {
-      case 'High': return 'text-accent-500 bg-accent-50 dark:bg-accent-500/10';
-      case 'Medium': return 'text-amber-500 bg-amber-50 dark:bg-amber-500/10';
-      default: return 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10';
+      await projectsApi.delete(project.id);
+      setProjects((currentProjects) => currentProjects.filter(({ id }) => id !== project.id));
+      setError('');
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'The project could not be deleted.'));
     }
   };
 
   return (
-    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 h-[calc(100vh-4rem)] flex flex-col text-slate-900 dark:text-slate-200">
-      
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4 flex-shrink-0 animate-fade-in">
+    <section className="mx-auto w-full max-w-6xl px-4 py-8 text-slate-900 dark:text-slate-100 sm:px-6 lg:px-8">
+      <header className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="font-display text-4xl font-extrabold text-slate-900 dark:text-white flex items-center tracking-tight">
-            <FolderKanban className="mr-3 h-8 w-8 text-primary-500" />
+          <h1 className="flex items-center text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+            <FolderKanban className="mr-3 h-8 w-8 text-primary-600 dark:text-primary-400" />
             Projects
           </h1>
-          <p className="mt-2 text-slate-800 dark:text-slate-100 font-medium">Manage your tasks and workflows visually.</p>
+          <p className="mt-2 text-slate-700 dark:text-slate-200">Create and manage your projects.</p>
         </div>
-        <button onClick={() => openModal()} className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2 hover:-translate-y-1">
-          <Plus className="h-5 w-5" /> New Task
+        <button type="button" onClick={() => openModal()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-700 px-5 py-3 font-bold text-white shadow-sm hover:bg-primary-800 focus-visible:outline-offset-2 dark:bg-primary-600 dark:hover:bg-primary-500">
+          <Plus size={18} /> New Project
         </button>
-      </div>
+      </header>
 
-      <div className="flex-1 overflow-x-auto custom-scrollbar pb-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
-        <div className="flex gap-6 min-w-max h-full">
-          {columns.map(col => (
-            <div key={col.id} className={`w-80 flex flex-col rounded-3xl p-4 border border-slate-200/60 dark:border-white/5 ${col.color} transition-colors`}>
-              <div className="flex justify-between items-center mb-6 px-2">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">{col.title}</h3>
-                <span className="h-6 w-6 rounded-full bg-white dark:bg-base-900 flex items-center justify-center text-xs font-bold shadow-sm">
-                  {tasks.filter(t => t.column === col.id).length}
-                </span>
+      {error && !modalOpen && (
+        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-100" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => { setLoading(true); fetchProjects(); }} className="shrink-0 underline underline-offset-2">Try again</button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center font-medium text-slate-700 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200" role="status">Loading projects…</div>
+      ) : projects.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-white/15 dark:bg-slate-900">
+          <FolderKanban className="mx-auto mb-3 h-9 w-9 text-slate-500 dark:text-slate-300" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">No projects yet</h2>
+          <p className="mt-1 text-slate-700 dark:text-slate-300">Create a project to keep its details and progress in one place.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {projects.map((project) => (
+            <article key={project.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-950 dark:text-white">{project.name}</h2>
+                  <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                    {project.status.replaceAll('_', ' ')}
+                  </span>
+                </div>
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => openModal(project)} aria-label={`Edit ${project.name}`} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <Pencil size={16} />
+                  </button>
+                  <button type="button" onClick={() => handleDelete(project)} aria-label={`Delete ${project.name}`} className="rounded-lg p-2 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/50">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-1">
-                {loading ? (
-                  <div className="text-center py-4 text-slate-500">Loading...</div>
-                ) : (
-                  tasks.filter(t => t.column === col.id).map(task => (
-                    <div key={task.id} onClick={() => openModal(task)} className="bg-white dark:bg-base-900 p-5 rounded-2xl shadow-sm border border-slate-200/60 dark:border-white/5 group hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
-                      <div className="flex justify-between items-start mb-3">
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
-                          {task.priority}
-                        </span>
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <h4 className="font-bold text-slate-800 dark:text-white leading-tight mb-4">{task.title}</h4>
-                      
-                      <div className="flex justify-between items-center text-xs font-medium text-slate-800 dark:text-slate-100 pt-3 border-t border-slate-100 dark:border-white/5">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          {task.date}
-                        </div>
-                        {col.id === 'done' ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        ) : (
-                          <Circle className="h-4 w-4 text-slate-300 dark:text-base-600" />
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              
-              <button onClick={() => openModal(null, col.id)} className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-100 font-bold hover:bg-white dark:hover:bg-base-800 hover:border-slate-400 dark:hover:border-white/20 transition-all flex items-center justify-center gap-2">
-                <Plus className="h-4 w-4" /> Add Task
-              </button>
-            </div>
+              <p className="mt-4 min-h-12 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{project.description || 'No description provided.'}</p>
+              {project.dueDate && <p className="mt-4 text-xs font-semibold text-slate-700 dark:text-slate-300">Due {project.dueDate}</p>}
+            </article>
           ))}
         </div>
-      </div>
+      )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-base-900 rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-white/10">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                {editingTask ? 'Edit Task' : 'New Task'}
-              </h2>
-              <button onClick={closeModal} className="text-slate-500 hover:bg-slate-100 dark:hover:bg-base-800 p-2 rounded-full transition-colors">
-                <X className="h-5 w-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="project-form-title" className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 id="project-form-title" className="text-xl font-bold text-slate-950 dark:text-white">{editingProject ? 'Edit Project' : 'New Project'}</h2>
+              <button type="button" onClick={closeModal} aria-label="Close project form" className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><X size={19} /></button>
             </div>
-            
+            {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-900 dark:bg-red-950/50 dark:text-red-100" role="alert">{error}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Task Title</label>
-                <input 
-                  type="text" 
-                  required
-                  value={formData.title}
-                  onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
-                  placeholder="Enter task title"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Status Column</label>
-                  <select 
-                    value={formData.columnId}
-                    onChange={e => setFormData({...formData, columnId: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
-                  >
-                    {columns.map(col => <option key={col.id} value={col.id}>{col.title}</option>)}
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Project name
+                <input required maxLength={120} value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 placeholder:text-slate-500 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/30 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" />
+              </label>
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Description
+                <textarea rows={3} maxLength={2000} value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} className="mt-1 w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 placeholder:text-slate-500 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/30 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" />
+              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  Status
+                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/30 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                    {statuses.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Priority</label>
-                  <select 
-                    value={formData.priority}
-                    onChange={e => setFormData({...formData, priority: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                </div>
+                </label>
+                <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  Due date
+                  <input type="date" value={formData.dueDate} onChange={(event) => setFormData({ ...formData, dueDate: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/30 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
+                </label>
               </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Date/Milestone</label>
-                <input 
-                  type="text" 
-                  value={formData.dateStr}
-                  onChange={e => setFormData({...formData, dateStr: e.target.value})}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-base-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
-                  placeholder="e.g. Oct 12"
-                />
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={closeModal} className="px-5 py-2.5 font-bold rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-base-800 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2.5 font-bold rounded-xl bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-500/30 transition-colors">
-                  {editingTask ? 'Save Changes' : 'Create Task'}
-                </button>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2 font-semibold text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">Cancel</button>
+                <button type="submit" disabled={saving} className="rounded-lg bg-primary-700 px-4 py-2 font-bold text-white hover:bg-primary-800 disabled:cursor-wait disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-500">{saving ? 'Saving…' : editingProject ? 'Save changes' : 'Create project'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

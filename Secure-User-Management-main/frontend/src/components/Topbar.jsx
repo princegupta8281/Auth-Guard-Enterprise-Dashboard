@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 const destinations = [
   { label: 'Overview', path: '/dashboard', group: 'Workspace' },
   { label: 'Projects', path: '/projects', group: 'Workspace' },
+  { label: 'Tasks', path: '/tasks', group: 'Workspace' },
   { label: 'Analytics', path: '/analytics', group: 'Workspace' },
   { label: 'Messages', path: '/messages', group: 'Workspace' },
   { label: 'Appointments', path: '/appointments', group: 'Workspace' },
@@ -30,6 +31,7 @@ const destinations = [
 const pageTitles = {
   '/dashboard': 'Overview',
   '/projects': 'Projects',
+  '/tasks': 'Tasks',
   '/analytics': 'Analytics',
   '/messages': 'Messages',
   '/appointments': 'Appointments',

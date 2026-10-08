@@ -20,6 +20,7 @@ const Messages = lazy(() => import('./pages/Messages'));
 const Settings = lazy(() => import('./pages/Settings'));
 const HelpCenter = lazy(() => import('./pages/HelpCenter'));
 const Projects = lazy(() => import('./pages/Projects'));
+const Tasks = lazy(() => import('./pages/Tasks'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -77,6 +78,7 @@ function AppRoutes() {
             <Route path="/audit-logs" element={<ProtectedRoute><AuthenticatedLayout><AuditLogs /></AuthenticatedLayout></ProtectedRoute>} />
             <Route path="/tickets" element={<ProtectedRoute><AuthenticatedLayout><Tickets /></AuthenticatedLayout></ProtectedRoute>} />
             <Route path="/projects" element={<ProtectedRoute><AuthenticatedLayout><Projects /></AuthenticatedLayout></ProtectedRoute>} />
+            <Route path="/tasks" element={<ProtectedRoute><AuthenticatedLayout><Tasks /></AuthenticatedLayout></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><AuthenticatedLayout><Analytics /></AuthenticatedLayout></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><AuthenticatedLayout><Messages /></AuthenticatedLayout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><AuthenticatedLayout><Settings /></AuthenticatedLayout></ProtectedRoute>} />

@@ -8,6 +8,7 @@ import {
   FileClock,
   FolderKanban,
   LayoutDashboard,
+  ListTodo,
   MessageSquareText,
   Settings2,
   ShieldCheck,
@@ -20,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 const primaryLinks = [
   { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Projects', path: '/projects', icon: FolderKanban },
+  { name: 'Tasks', path: '/tasks', icon: ListTodo },
   { name: 'Analytics', path: '/analytics', icon: Activity },
   { name: 'Messages', path: '/messages', icon: MessageSquareText },
   { name: 'Appointments', path: '/appointments', icon: CalendarDays },

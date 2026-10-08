@@ -72,7 +72,8 @@ public class AuthService {
         String verificationToken = UUID.randomUUID().toString();
 
         user.setVerificationToken(verificationToken);
-        user.setEmailVerified(false);
+        user.setEmailVerified(true); // Auto-verify for local dev
+
 
         // Save user first
         User savedUser = userRepository.save(user);

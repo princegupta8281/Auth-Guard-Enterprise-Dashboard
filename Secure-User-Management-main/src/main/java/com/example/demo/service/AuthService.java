@@ -94,8 +94,8 @@ public class AuthService {
             );
             logger.info("Verification email sent successfully");
         } catch (RuntimeException e) {
-            logger.warn("Failed to send verification email for user {}", savedUser.getEmail(), e);
-            throw e;
+            logger.warn("Failed to send verification email for user {}, but proceeding as email is auto-verified", savedUser.getEmail(), e);
+            // Do not throw the exception, allow registration to succeed
         }
         
         auditLogService.logAction("USER_REGISTER", "New user registered: " + savedUser.getName(), savedUser.getEmail());

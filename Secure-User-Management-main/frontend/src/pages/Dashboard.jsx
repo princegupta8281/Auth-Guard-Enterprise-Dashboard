@@ -11,9 +11,11 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  FolderKanban,
+  ListTodo
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { appointmentsApi, getApiErrorMessage, ticketsApi } from '../services/api';
+import { appointmentsApi, getApiErrorMessage, ticketsApi, projectsApi, tasksApi } from '../services/api';
 
 const formatDate = (value) => {
   if (!value) return 'Date to be confirmed';
@@ -40,127 +42,169 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
+
   const [appointmentsError, setAppointmentsError] = useState('');
   const [ticketsError, setTicketsError] = useState('');
-  const [appointmentsRetry, setAppointmentsRetry] = useState(0);
-  const [ticketsRetry, setTicketsRetry] = useState(0);
+  const [projectsError, setProjectsError] = useState('');
+  const [tasksError, setTasksError] = useState('');
+
+  const [retry, setRetry] = useState(0);
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
 
   useEffect(() => {
     let active = true;
+    
+    // Fetch Appointments
     appointmentsApi.listForUser(user.id).then((response) => {
-      if (!Array.isArray(response.data)) throw new Error('The appointments response was not a list.');
       if (!active) return;
-      setAppointments(response.data);
+      setAppointments(Array.isArray(response.data) ? response.data : []);
       setAppointmentsError('');
-      setAppointmentsLoading(false);
     }).catch((error) => {
       if (!active) return;
-      setAppointmentsError(getApiErrorMessage(error, 'Your appointments could not be loaded.'));
-      setAppointmentsLoading(false);
-    });
-    return () => { active = false; };
-  }, [user.id, appointmentsRetry]);
+      setAppointmentsError('Could not load appointments.');
+    }).finally(() => active && setAppointmentsLoading(false));
 
-  useEffect(() => {
-    let active = true;
+    // Fetch Tickets
     ticketsApi.getUserTickets().then((response) => {
-      if (!Array.isArray(response.data)) throw new Error('The support response was not a list.');
       if (!active) return;
-      setTickets(response.data);
+      setTickets(Array.isArray(response.data) ? response.data : []);
       setTicketsError('');
-      setTicketsLoading(false);
     }).catch((error) => {
       if (!active) return;
-      setTicketsError(getApiErrorMessage(error, 'Your support requests could not be loaded.'));
-      setTicketsLoading(false);
-    });
+      setTicketsError('Could not load support requests.');
+    }).finally(() => active && setTicketsLoading(false));
+
+    // Fetch Projects
+    projectsApi.list().then((response) => {
+      if (!active) return;
+      setProjects(Array.isArray(response.data) ? response.data : []);
+      setProjectsError('');
+    }).catch((error) => {
+      if (!active) return;
+      setProjectsError('Could not load projects.');
+    }).finally(() => active && setProjectsLoading(false));
+
+    // Fetch Tasks
+    tasksApi.list().then((response) => {
+      if (!active) return;
+      setTasks(Array.isArray(response.data) ? response.data : []);
+      setTasksError('');
+    }).catch((error) => {
+      if (!active) return;
+      setTasksError('Could not load tasks.');
+    }).finally(() => active && setTasksLoading(false));
+
     return () => { active = false; };
-  }, [ticketsRetry]);
+  }, [user.id, retry]);
 
   const upcomingAppointments = useMemo(
     () => [...appointments]
-      .filter((appointment) => {
-        const timestamp = getAppointmentTimestamp(appointment.appointmentDate);
-        return timestamp !== null && timestamp >= DASHBOARD_NOW.getTime()
-          && !['REJECTED', 'CANCELLED'].includes(appointment.status);
-      })
+      .filter((a) => getAppointmentTimestamp(a.appointmentDate) !== null && getAppointmentTimestamp(a.appointmentDate) >= DASHBOARD_NOW.getTime() && !['REJECTED', 'CANCELLED'].includes(a.status))
       .sort((a, b) => getAppointmentTimestamp(a.appointmentDate) - getAppointmentTimestamp(b.appointmentDate))
       .slice(0, 3),
     [appointments],
   );
-  const openTickets = useMemo(
-    () => tickets.filter((ticket) => !['CLOSED', 'RESOLVED'].includes(ticket.status)).length,
-    [tickets],
-  );
-  const pendingAppointments = useMemo(
-    () => appointments.filter((appointment) => appointment.status === 'PENDING').length,
-    [appointments],
-  );
+  
+  const openTickets = useMemo(() => tickets.filter((t) => !['CLOSED', 'RESOLVED'].includes(t.status)).length, [tickets]);
+  const pendingAppointments = useMemo(() => appointments.filter((a) => a.status === 'PENDING').length, [appointments]);
+  const activeProjects = useMemo(() => projects.filter((p) => !['COMPLETED'].includes(p.status)).length, [projects]);
+  const activeTasks = useMemo(() => tasks.filter((t) => !['done'].includes(t.columnId)).length, [tasks]);
 
   return (
     <div className="dashboard-page">
-      <div className="dash-overline"><span className="dash-overline-mark">✳</span> YOUR PERSONAL WORKSPACE <span className="dash-overline-line" /></div>
+      <div className="dash-overline"><span className="dash-overline-mark">✳</span> ENTERPRISE COMMAND CENTER <span className="dash-overline-line" /></div>
       <section className="dash-welcome">
         <div>
           <p className="dash-date">{DASHBOARD_DATE_LABEL}</p>
           <h1>{GREETING}, <em>{firstName}.</em></h1>
-          <p className="dash-welcome-copy">A little space to take stock, and get on with what matters.</p>
+          <p className="dash-welcome-copy">A comprehensive view of your active projects, tasks, and schedule.</p>
         </div>
         <Link className="dash-profile-link" to="/profile">
           <span className="dash-profile-avatar">{user?.name?.trim()?.charAt(0)?.toUpperCase() || 'U'}</span>
-          <span><small>YOUR ACCOUNT</small><strong>{user?.role === 'ADMIN' ? 'Administrator' : 'Personal workspace'}</strong></span>
+          <span><small>YOUR ACCOUNT</small><strong>{user?.role === 'ADMIN' ? 'Administrator' : 'Workspace Member'}</strong></span>
           <ArrowUpRight size={16} />
         </Link>
       </section>
 
       <section className="dash-security-banner">
         <div className="security-banner-icon"><ShieldCheck size={20} /></div>
-        <div className="security-banner-copy"><strong>Your account is in good hands.</strong><span>You’re signed in to your personal workspace.</span></div>
+        <div className="security-banner-copy"><strong>Enterprise-grade security is active.</strong><span>You’re signed in to your secured environment.</span></div>
         <span className="security-banner-status"><i /> PROTECTED</span>
         <Link to="/settings" aria-label="Review your security settings"><ArrowUpRight size={17} /></Link>
       </section>
 
-      <div className="dash-metrics">
+      <div className="dash-metrics" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         <article className="dash-metric-card">
-          <div className="metric-card-head"><span className="metric-icon metric-icon-lime"><CalendarDays size={18} /></span><span className="metric-card-label">IN YOUR CALENDAR</span></div>
-          {appointmentsLoading ? <span className="metric-value metric-loading" aria-label="Loading appointments" /> : <strong className="metric-value">{appointmentsError ? '—' : appointments.length.toString().padStart(2, '0')}</strong>}
+          <div className="metric-card-head"><span className="metric-icon metric-icon-lime"><FolderKanban size={18} /></span><span className="metric-card-label">ACTIVE PROJECTS</span></div>
+          {projectsLoading ? <span className="metric-value metric-loading" /> : <strong className="metric-value">{projectsError ? '—' : activeProjects.toString().padStart(2, '0')}</strong>}
+          <span className="metric-foot">{projectsError ? 'Could not load projects' : 'Projects currently in progress'}</span>
+          <Link to="/projects">View projects <ArrowRight size={13} /></Link>
+        </article>
+        
+        <article className="dash-metric-card">
+          <div className="metric-card-head"><span className="metric-icon metric-icon-peach"><ListTodo size={18} /></span><span className="metric-card-label">PENDING TASKS</span></div>
+          {tasksLoading ? <span className="metric-value metric-loading" /> : <strong className="metric-value">{tasksError ? '—' : activeTasks.toString().padStart(2, '0')}</strong>}
+          <span className="metric-foot">{tasksError ? 'Could not load tasks' : 'Tasks awaiting completion'}</span>
+          <Link to="/tasks">View tasks <ArrowRight size={13} /></Link>
+        </article>
+
+        <article className="dash-metric-card">
+          <div className="metric-card-head"><span className="metric-icon metric-icon-lavender"><CalendarDays size={18} /></span><span className="metric-card-label">UPCOMING</span></div>
+          {appointmentsLoading ? <span className="metric-value metric-loading" /> : <strong className="metric-value">{appointmentsError ? '—' : appointments.length.toString().padStart(2, '0')}</strong>}
           <span className="metric-foot">{appointmentsError ? 'Could not load appointments' : `${pendingAppointments} awaiting confirmation`}</span>
           <Link to="/appointments">Open calendar <ArrowRight size={13} /></Link>
         </article>
-        <article className="dash-metric-card">
-          <div className="metric-card-head"><span className="metric-icon metric-icon-peach"><CircleHelp size={18} /></span><span className="metric-card-label">HERE TO HELP</span></div>
-          {ticketsLoading ? <span className="metric-value metric-loading" aria-label="Loading support requests" /> : <strong className="metric-value">{ticketsError ? '—' : openTickets.toString().padStart(2, '0')}</strong>}
-          <span className="metric-foot">{ticketsError ? 'Could not load support requests' : 'Open support requests'}</span>
-          <Link to="/tickets">Visit support <ArrowRight size={13} /></Link>
-        </article>
+
         <article className="dash-metric-card dash-metric-feature">
           <div className="feature-dots" aria-hidden="true"><i /><i /><i /></div>
-          <span className="metric-card-label">THE LITTLE THINGS</span>
-          <strong className="feature-title">One less thing<br />to worry about.</strong>
-          <span className="feature-copy">Your profile and preferences, just the way you left them.</span>
-          <Link to="/profile">Take a look <ArrowRight size={13} /></Link>
+          <span className="metric-card-label">SUPPORT TEAM</span>
+          <strong className="feature-title">We've got your<br />back.</strong>
+          <span className="feature-copy">Access the enterprise IT helpdesk instantly.</span>
+          <Link to="/tickets">Visit support <ArrowRight size={13} /></Link>
         </article>
       </div>
 
       <div className="dash-section-heading">
-        <div><span className="section-kicker">YOUR WEEK, AT A GLANCE</span><h2>The things on your mind.</h2></div>
-        <span className="section-spark">A little clarity goes a long way <Sparkles size={14} /></span>
+        <div><span className="section-kicker">MISSION CONTROL</span><h2>Your Activity Overview</h2></div>
+        <button type="button" onClick={() => setRetry(r => r + 1)} className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm transition-colors"><RefreshCw size={12} /> Refresh Data</button>
       </div>
 
-      <div className="dash-content-grid">
+      <div className="dash-content-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        
+        {/* Projects Card */}
         <section className="dash-list-card">
           <div className="list-card-heading">
-            <div><span className="list-card-icon list-card-icon-lime"><CalendarDays size={17} /></span><span><strong>Coming up</strong><small>Your appointments</small></span></div>
-            <Link to="/appointments" aria-label="View all appointments"><ArrowUpRight size={17} /></Link>
+            <div><span className="list-card-icon list-card-icon-lime"><FolderKanban size={17} /></span><span><strong>Recent Projects</strong><small>High-priority initiatives</small></span></div>
+            <Link to="/projects"><ArrowUpRight size={17} /></Link>
           </div>
-          {appointmentsLoading ? (
-            <div className="dash-loading-list"><span /><span /><span /></div>
-          ) : appointmentsError ? (
-            <div className="dash-empty-state dash-load-error"><p>{appointmentsError}</p><button type="button" onClick={() => { setAppointmentsLoading(true); setAppointmentsError(''); setAppointmentsRetry((retry) => retry + 1); }}><RefreshCw size={14} /> Try again</button></div>
-          ) : upcomingAppointments.length ? (
+          {projectsLoading ? <div className="dash-loading-list"><span /><span /><span /></div> : projectsError ? <div className="dash-empty-state dash-load-error"><p>{projectsError}</p></div> : projects.length ? (
+            <div className="dash-ticket-list">
+              {projects.slice(0, 3).map((project) => (
+                <Link to="/projects" className="dash-ticket-row" key={project.id}>
+                  <span className={`ticket-priority-dot priority-high`} />
+                  <span className="ticket-detail"><strong>{project.name}</strong><small>{project.status.replaceAll('_', ' ')} <i /> Due: {project.dueDate || 'TBD'}</small></span>
+                  <ArrowUpRight size={15} />
+                </Link>
+              ))}
+            </div>
+          ) : <div className="dash-empty-state"><span className="empty-state-icon"><FolderKanban size={19} /></span><strong>No active projects.</strong><Link to="/projects">Create one <ArrowRight size={14} /></Link></div>}
+          <Link className="list-card-footer" to="/projects">View all projects <ArrowRight size={14} /></Link>
+        </section>
+
+        {/* Appointments Card */}
+        <section className="dash-list-card">
+          <div className="list-card-heading">
+            <div><span className="list-card-icon list-card-icon-peach"><CalendarDays size={17} /></span><span><strong>Coming up</strong><small>Your appointments</small></span></div>
+            <Link to="/appointments"><ArrowUpRight size={17} /></Link>
+          </div>
+          {appointmentsLoading ? <div className="dash-loading-list"><span /><span /><span /></div> : appointmentsError ? <div className="dash-empty-state dash-load-error"><p>{appointmentsError}</p></div> : upcomingAppointments.length ? (
             <div className="dash-appointment-list">
               {upcomingAppointments.map((appointment) => {
                 const dateLabel = getAppointmentCalendarLabel(appointment.appointmentDate, { day: '2-digit' });
@@ -174,39 +218,12 @@ const Dashboard = () => {
                 );
               })}
             </div>
-          ) : (
-            <div className="dash-empty-state"><span className="empty-state-icon"><CalendarDays size={19} /></span><strong>A little room in your calendar.</strong><p>Your upcoming appointments will find a home here.</p><Link to="/appointments">Plan a visit <ArrowRight size={14} /></Link></div>
-          )}
+          ) : <div className="dash-empty-state"><span className="empty-state-icon"><CalendarDays size={19} /></span><strong>A little room in your calendar.</strong><Link to="/appointments">Plan a visit <ArrowRight size={14} /></Link></div>}
           <Link className="list-card-footer" to="/appointments">Go to appointments <ArrowRight size={14} /></Link>
-        </section>
-
-        <section className="dash-list-card">
-          <div className="list-card-heading">
-            <div><span className="list-card-icon list-card-icon-peach"><Fingerprint size={17} /></span><span><strong>Your support</strong><small>A friendly hand, when needed</small></span></div>
-            <Link to="/tickets" aria-label="View support requests"><ArrowUpRight size={17} /></Link>
-          </div>
-          {ticketsLoading ? (
-            <div className="dash-loading-list"><span /><span /><span /></div>
-          ) : ticketsError ? (
-            <div className="dash-empty-state dash-load-error"><p>{ticketsError}</p><button type="button" onClick={() => { setTicketsLoading(true); setTicketsError(''); setTicketsRetry((retry) => retry + 1); }}><RefreshCw size={14} /> Try again</button></div>
-          ) : tickets.length ? (
-            <div className="dash-ticket-list">
-              {tickets.slice(0, 3).map((ticket) => (
-                <Link to="/tickets" className="dash-ticket-row" key={ticket.id}>
-                  <span className={`ticket-priority-dot priority-${(ticket.priority || 'low').toLowerCase()}`} />
-                  <span className="ticket-detail"><strong>{ticket.title}</strong><small>Request #{ticket.id} <i /> {ticket.status?.replaceAll('_', ' ') || 'OPEN'}</small></span>
-                  <ArrowUpRight size={15} />
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="dash-empty-state"><span className="empty-state-icon"><Check size={19} /></span><strong>Nothing waiting on you.</strong><p>If you need us, we’re only a note away.</p><Link to="/tickets">Visit support <ArrowRight size={14} /></Link></div>
-          )}
-          <Link className="list-card-footer" to="/tickets">Visit the helpdesk <ArrowRight size={14} /></Link>
         </section>
       </div>
 
-      <div className="dash-closing-note"><Fingerprint size={15} /><span>A private place for your work. <strong>Always.</strong></span><span className="closing-note-right">MADE WITH CARE <span>✳</span></span></div>
+      <div className="dash-closing-note"><Fingerprint size={15} /><span>A private place for your work. <strong>Always.</strong></span><span className="closing-note-right">ENTERPRISE EDITION <span>✳</span></span></div>
     </div>
   );
 };

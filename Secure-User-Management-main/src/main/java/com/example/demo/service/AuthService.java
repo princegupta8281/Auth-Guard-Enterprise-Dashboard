@@ -32,7 +32,9 @@ public class AuthService {
     private final AuditLogService auditLogService;
     private final MfaService mfaService;
     private final String publicBaseUrl;
+    private final boolean autoVerifyEmail;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -40,7 +42,8 @@ public class AuthService {
             EmailService emailService,
             AuditLogService auditLogService,
             MfaService mfaService,
-            @Value("${app.public-base-url:http://localhost:8081}") String publicBaseUrl) {
+            @Value("${app.public-base-url:http://localhost:8081}") String publicBaseUrl,
+            @Value("${app.auth.auto-verify-email:false}") boolean autoVerifyEmail) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -49,7 +52,20 @@ public class AuthService {
         this.auditLogService = auditLogService;
         this.mfaService = mfaService;
         this.publicBaseUrl = publicBaseUrl.replaceAll("/+$", "");
+        this.autoVerifyEmail = autoVerifyEmail;
     }
+
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            EmailService emailService,
+            AuditLogService auditLogService,
+            MfaService mfaService,
+            String publicBaseUrl) {
+        this(userRepository, passwordEncoder, jwtService, emailService, auditLogService, mfaService, publicBaseUrl, false);
+    }
+
     @Transactional
     public User register(RegisterRequest request) {
         logger.info("User registration initiated");
@@ -72,7 +88,7 @@ public class AuthService {
         String verificationToken = UUID.randomUUID().toString();
 
         user.setVerificationToken(verificationToken);
-        user.setEmailVerified(true); // Auto-verify for local dev
+        user.setEmailVerified(autoVerifyEmail);
 
 
         // Save user first
@@ -94,8 +110,12 @@ public class AuthService {
             );
             logger.info("Verification email sent successfully");
         } catch (RuntimeException e) {
-            logger.warn("Failed to send verification email for user {}, but proceeding as email is auto-verified", savedUser.getEmail(), e);
-            // Do not throw the exception, allow registration to succeed
+            if (autoVerifyEmail) {
+                logger.warn("Failed to send verification email for user {}, but proceeding as email is auto-verified", savedUser.getEmail(), e);
+            } else {
+                logger.warn("Failed to send verification email for user {}", savedUser.getEmail(), e);
+                throw e;
+            }
         }
         
         auditLogService.logAction("USER_REGISTER", "New user registered: " + savedUser.getName(), savedUser.getEmail());

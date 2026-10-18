@@ -48,4 +48,28 @@ public class AppointmentService {
 
         return appointmentRepository.findByUserId(userId);
     }
+
+    public List<Appointment> getAllAppointments() {
+        return appointmentRepository.findAll();
+    }
+
+    public Appointment cancelAppointment(Long appointmentId, Long userId, boolean isAdmin) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + appointmentId));
+
+        if (!isAdmin && !appointment.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("You can only cancel your own appointments");
+        }
+
+        appointment.setStatus("CANCELLED");
+        return appointmentRepository.save(appointment);
+    }
+
+    public Appointment updateStatus(Long appointmentId, String status) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + appointmentId));
+
+        appointment.setStatus(status.toUpperCase());
+        return appointmentRepository.save(appointment);
+    }
 }

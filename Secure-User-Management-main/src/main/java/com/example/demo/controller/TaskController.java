@@ -22,7 +22,7 @@ import java.util.Set;
 public class TaskController {
 
     private static final Set<String> COLUMNS = Set.of("todo", "in_progress", "review", "done");
-    private static final Set<String> PRIORITIES = Set.of("Low", "Medium", "High");
+    private static final Set<String> PRIORITIES = Set.of("Low", "Medium", "High", "Critical");
 
     @Autowired
     private TaskRepository taskRepository;

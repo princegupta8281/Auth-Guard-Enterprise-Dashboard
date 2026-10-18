@@ -99,6 +99,7 @@ const Tasks = () => {
 
   const getPriorityColor = (p) => {
     switch (p) {
+      case 'Critical': return 'text-purple-800 bg-purple-100 dark:text-purple-200 dark:bg-purple-500/20';
       case 'High': return 'text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-500/20';
       case 'Medium': return 'text-amber-800 bg-amber-100 dark:text-amber-200 dark:bg-amber-500/20';
       default: return 'text-emerald-800 bg-emerald-100 dark:text-emerald-200 dark:bg-emerald-500/20';
@@ -220,6 +221,7 @@ const Tasks = () => {
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
                     <option value="High">High</option>
+                    <option value="Critical">Critical</option>
                   </select>
                 </div>
               </div>

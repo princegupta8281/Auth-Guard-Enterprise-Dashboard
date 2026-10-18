@@ -3,7 +3,7 @@ import { FolderKanban, Plus, Pencil, Trash2, X } from 'lucide-react';
 import { getApiErrorMessage, projectsApi } from '../services/api';
 
 const initialForm = { name: '', description: '', status: 'PLANNING', dueDate: '' };
-const statuses = ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED'];
+const statuses = ['PLANNING', 'ACTIVE', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'DONE'];
 
 const Projects = () => {
   const [projects, setProjects] = useState([]);

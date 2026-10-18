@@ -26,4 +26,12 @@ public class DashboardController {
         );
     }
 
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @GetMapping("/overview")
+    public ResponseEntity<java.util.Map<String, Object>> getSystemOverview() {
+        return ResponseEntity.ok(
+                dashboardService.getSystemOverview()
+        );
+    }
+
 }

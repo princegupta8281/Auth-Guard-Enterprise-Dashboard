@@ -101,6 +101,16 @@ public class UserService {
 
         return userRepository.save(existingUser);
     }
+
+    @CacheEvict(value = "dashboardStats", allEntries = true)
+    public User updateUserRole(Long id, com.example.demo.entity.Role role) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setRole(role);
+        User saved = userRepository.save(user);
+        auditLogService.logAction("ROLE_UPDATE", "User role changed to " + role.name(), saved.getEmail());
+        return saved;
+    }
     @CacheEvict(value = "dashboardStats", allEntries = true)
     public User updateMyProfile(
             String email,

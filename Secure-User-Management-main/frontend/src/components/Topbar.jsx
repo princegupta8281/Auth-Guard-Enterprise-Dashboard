@@ -9,9 +9,11 @@ import {
   Moon,
   Search,
   Sun,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { notificationsApi } from '../services/api';
 
 const destinations = [
   { label: 'Overview', path: '/dashboard', group: 'Workspace' },
@@ -53,6 +55,8 @@ const Topbar = ({ onMenuClick }) => {
   const [query, setQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const dateLabel = TOPBAR_DATE_LABEL;
   const results = destinations.filter((destination) => (
     (!destination.admin || user?.role === 'ADMIN')
@@ -75,6 +79,32 @@ const Topbar = ({ onMenuClick }) => {
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
   }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const { data } = await notificationsApi.unreadForUser(user.id);
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch {
+      // silently ignore
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  const handleMarkAsRead = async (notificationId) => {
+    if (!user?.id) return;
+    try {
+      await notificationsApi.markAsRead(notificationId, user.id);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch {
+      // ignore
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -147,10 +177,56 @@ const Topbar = ({ onMenuClick }) => {
         >
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
-        <Link className="topbar-icon-button notification-link" to="/messages" aria-label="Open messages">
-          <Bell size={17} />
-          <span />
-        </Link>
+        <div className="relative">
+          <button
+            type="button"
+            className="topbar-icon-button notification-link relative"
+            onClick={() => {
+              setIsNotificationsOpen(!isNotificationsOpen);
+              setIsAccountOpen(false);
+            }}
+            aria-expanded={isNotificationsOpen}
+            aria-label="Open notifications"
+          >
+            <Bell size={17} />
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-[10px] font-bold text-white shadow-sm">
+                {notifications.length}
+              </span>
+            )}
+          </button>
+
+          {isNotificationsOpen && (
+            <div className="account-popover absolute right-0 mt-2 w-80 rounded-2xl bg-white p-4 shadow-2xl border border-slate-200 dark:border-white/10 dark:bg-base-900 z-50">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5 mb-2">
+                <span className="font-bold text-sm text-slate-900 dark:text-white">Notifications</span>
+                <span className="text-xs text-primary-600 dark:text-primary-400 font-semibold">{notifications.length} unread</span>
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {notifications.length === 0 ? (
+                  <p className="py-4 text-center text-xs text-slate-500">You're all caught up!</p>
+                ) : (
+                  notifications.map((n) => (
+                    <div key={n.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/5 flex items-start justify-between gap-2">
+                      <div className="text-left min-w-0">
+                        <strong className="block text-xs text-slate-900 dark:text-white truncate">{n.title}</strong>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5">{n.message}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAsRead(n.id)}
+                        className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 text-slate-400 hover:text-emerald-500 shrink-0 transition-colors"
+                        title="Mark as read"
+                      >
+                        <Check size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="topbar-account-wrap">
           <button
             type="button"

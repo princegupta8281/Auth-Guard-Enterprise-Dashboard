@@ -117,6 +117,9 @@ export const appointmentsApi = {
   listForUser: (userId) => api.get(`/appointments/user/${userId}`),
   createForUser: (userId, appointment) =>
     api.post(`/appointments/user/${userId}`, appointment),
+  listAll: () => api.get('/appointments'),
+  cancel: (id) => api.put(`/appointments/${id}/cancel`),
+  updateStatus: (id, status) => api.put(`/appointments/${id}/status`, { status }),
 };
 
 export const notificationsApi = {
@@ -130,7 +133,13 @@ export const adminApi = {
   dashboardStats: () => api.get('/dashboard/stats'),
   monthlyUserReport: () => api.get('/reports/users/monthly'),
   usersPage: (params) => api.get('/users/page', { params }),
+  updateUserRole: (id, role) => api.put(`/users/${id}/role`, { role }),
+  deleteUser: (id) => api.delete(`/users/${id}`),
   auditLogs: (params) => api.get('/audit-logs', { params }),
+};
+
+export const analyticsApi = {
+  getOverview: () => api.get('/dashboard/overview'),
 };
 
 export const ticketsApi = {

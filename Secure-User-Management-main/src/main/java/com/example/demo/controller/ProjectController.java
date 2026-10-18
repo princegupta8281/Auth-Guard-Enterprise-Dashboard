@@ -20,7 +20,7 @@ import java.util.Set;
 @RequestMapping("/api/projects")
 public class ProjectController {
 
-    private static final Set<String> STATUSES = Set.of("PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED");
+    private static final Set<String> STATUSES = Set.of("PLANNING", "ACTIVE", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "DONE");
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;

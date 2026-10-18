@@ -76,6 +76,7 @@ public class SecurityConfig {
                                 "/images/**",
                                 "/static/**",
                                 "/frontend/**",
+                                "/uploads/**",
                                 "/*.html",
                                 "/*.css",
                                 "/*.js",

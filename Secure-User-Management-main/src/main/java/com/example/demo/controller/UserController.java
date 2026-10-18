@@ -111,6 +111,22 @@ public class UserController {
                 "User deleted successfully"
         );
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}/role")
+    public ResponseEntity<UserResponse> updateUserRole(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> payload) {
+
+        String roleStr = payload.get("role");
+        if (roleStr == null || roleStr.isBlank()) {
+            throw new IllegalArgumentException("Role is required");
+        }
+        com.example.demo.entity.Role role = com.example.demo.entity.Role.valueOf(roleStr.toUpperCase());
+        User user = userService.updateUserRole(id, role);
+
+        return ResponseEntity.ok(userMapper.toUserResponse(user));
+    }
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @GetMapping("/profile")
     public ResponseEntity<UserResponse> getMyProfile(

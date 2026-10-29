@@ -39,3 +39,13 @@ build/
 
 # Local Spring configuration
 application-local.properties
+
+# Database storage & local files
+data/
+*.mv.db
+*.trace.db
+
+# Dependencies & test results
+node_modules/
+test-results/
+playwright-report/
